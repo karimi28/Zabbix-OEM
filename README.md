@@ -1,7 +1,7 @@
 # Zabbix-OEM
 Zabbix integration with Oracle Enterprise Manager.
 
-We use OEM REST APIs to integrate zabbix with OEM incident manager to use Zabbix automation capabilities. 
+We use OEM REST APIs to integrate Zabbix with OEM incident manager to use Zabbix automation capabilities. 
 
 In "Zabbix OEM" template you must set four macro:
 
@@ -12,9 +12,14 @@ In "Zabbix OEM" template you must set four macro:
 
 Zabbix Severity integrate:
 
-Disaster=> Fatal
-High=> Critical
-Warning=> Warning
+- Disaster=> Fatal
+- High=> Critical
+- Warning=> Warning
+
+
+
+
+
 
 
 
