@@ -1,0 +1,195 @@
+zabbix_export:
+  version: '6.0'
+  date: '2023-04-13T10:23:32Z'
+  groups:
+    -
+      uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+  templates:
+    -
+      uuid: f61742d32cfa41f9a1f1307c1d816ac5
+      template: 'Template Oracle Incident Manager'
+      name: 'Template Oracle Incident Manager'
+      description: 'https://github.com/karimi28/Zabbix-OEM'
+      groups:
+        -
+          name: Templates
+      items:
+        -
+          uuid: 2ae01b4ad4b140b69347254455bd3859
+          name: 'OEM Port'
+          type: SIMPLE
+          key: 'net.tcp.service[tcp,{$OEM.URL},{$OEM.PORT}]'
+          history: 7d
+          triggers:
+            -
+              uuid: 2e45379b61e5437c8d1d326cbd304456
+              expression: 'last(/Template Oracle Incident Manager/net.tcp.service[tcp,{$OEM.URL},{$OEM.PORT}])=0'
+              name: 'OEM is unreachable'
+              priority: HIGH
+        -
+          uuid: a8f2f05ad382455d9836ac0f19a12631
+          name: 'Oracle: Get incidents'
+          type: HTTP_AGENT
+          key: oem.incidents
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$USERNAME}'
+          password: '{$PASSWORD}'
+          preprocessing:
+            -
+              type: JSONPATH
+              parameters:
+                - $.items
+            -
+              type: JAVASCRIPT
+              parameters:
+                - 'return ''{ "data":''+ value + ''}'''
+          timeout: 30s
+          url: 'https://{$OEM.URL}:{$OEM.PORT}/em/api/incidents/'
+        -
+          uuid: 70a4146f61bd41c7bfd56cebe4e9d2a6
+          name: 'Unsupported items'
+          type: INTERNAL
+          key: 'zabbix[host,,items_unsupported]'
+          history: 7d
+          triggers:
+            -
+              uuid: 3067534ea2a644c483ffa4bcfdcbd02d
+              expression: 'last(/Template Oracle Incident Manager/zabbix[host,,items_unsupported])>=1'
+              name: 'Unsupported items'
+              priority: WARNING
+      discovery_rules:
+        -
+          uuid: a3fbc396adf445ab9980ce030cd8c480
+          name: 'Oracle incidents discovery'
+          type: DEPENDENT
+          key: OEM.discovery
+          delay: '0'
+          lifetime: 1d
+          item_prototypes:
+            -
+              uuid: 21c9a80a49bc4758af6d052c567907f5
+              name: '{#MESSAGE} on {#TARGET}'
+              type: HTTP_AGENT
+              key: 'Incident.[{#ID}]'
+              history: 7d
+              authtype: BASIC
+              username: '{$USERNAME}'
+              password: '{$PASSWORD}'
+              preprocessing:
+                -
+                  type: JSONPATH
+                  parameters:
+                    - $.items..isOpen
+                -
+                  type: REGEX
+                  parameters:
+                    - 'true'
+                    - '1'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              timeout: 30s
+              url: 'https://{$OEM.IP}:{$OEM.PORT}/em/api/incidents/{#ID}/events'
+              trigger_prototypes:
+                -
+                  uuid: 44dc946719704de4956a114827465431
+                  expression: 'last(/Template Oracle Incident Manager/Incident.[{#ID}])=1'
+                  name: 'Critical: {#MESSAGE} on {#TARGET}'
+                  status: DISABLED
+                  discover: NO_DISCOVER
+                  priority: HIGH
+                -
+                  uuid: cb9d5c2c248b4dfabc9a78bf62a147ea
+                  expression: 'last(/Template Oracle Incident Manager/Incident.[{#ID}])=1'
+                  name: 'Fatal: {#MESSAGE} on {#TARGET}'
+                  status: DISABLED
+                  discover: NO_DISCOVER
+                  priority: DISASTER
+                -
+                  uuid: b8c680ad525645048d0cce7ae4532568
+                  expression: 'last(/Template Oracle Incident Manager/Incident.[{#ID}])=1'
+                  name: 'Warning: {#MESSAGE} on {#TARGET}'
+                  status: DISABLED
+                  discover: NO_DISCOVER
+                  priority: WARNING
+          master_item:
+            key: oem.incidents
+          lld_macro_paths:
+            -
+              lld_macro: '{#ID}'
+              path: $.id
+            -
+              lld_macro: '{#MESSAGE}'
+              path: $.message
+            -
+              lld_macro: '{#SEVERITY}'
+              path: $.severity
+            -
+              lld_macro: '{#TARGET}'
+              path: $.targets..name.first()
+          overrides:
+            -
+              name: 'Severity Critical'
+              step: '3'
+              filter:
+                conditions:
+                  -
+                    macro: '{#SEVERITY}'
+                    value: Critical
+                    formulaid: A
+              operations:
+                -
+                  operationobject: TRIGGER_PROTOTYPE
+                  operator: REGEXP
+                  value: Critical
+                  status: ENABLED
+                  discover: DISCOVER
+                  severity: HIGH
+            -
+              name: 'Severity Fatal'
+              step: '1'
+              filter:
+                conditions:
+                  -
+                    macro: '{#SEVERITY}'
+                    value: Fatal
+                    formulaid: A
+              operations:
+                -
+                  operationobject: TRIGGER_PROTOTYPE
+                  operator: LIKE
+                  value: Fatal
+                  status: ENABLED
+                  discover: DISCOVER
+                  severity: HIGH
+            -
+              name: 'Severity Warning'
+              step: '2'
+              filter:
+                conditions:
+                  -
+                    macro: '{#SEVERITY}'
+                    value: Warning
+                    formulaid: A
+              operations:
+                -
+                  operationobject: TRIGGER_PROTOTYPE
+                  operator: LIKE
+                  value: Warning
+                  status: ENABLED
+                  discover: DISCOVER
+                  severity: WARNING
+      macros:
+        -
+          macro: '{$OEM.PORT}'
+          value: '7803'
+        -
+          macro: '{$OEM.URL}'
+        -
+          macro: '{$PASSWORD}'
+        -
+          macro: '{$USERNAME}'
+          value: zabbix
